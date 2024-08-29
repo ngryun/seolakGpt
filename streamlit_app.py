@@ -11,6 +11,28 @@ kst = pytz.timezone('Asia/Seoul')
 names = st.secrets["names"]
 short_numbers = st.secrets["short_numbers"]
 
+time_schedule = {
+    "1교시": {"시작 시간": "8:40", "종료 시간": "9:30"},
+    "2교시": {"시작 시간": "9:40", "종료 시간": "10:30"},
+    "3교시": {"시작 시간": "10:40", "종료 시간": "11:30"},
+    "4교시": {"시작 시간": "11:40", "종료 시간": "12:30"},
+    "점심 식사 시간": {"시작 시간": "12:30", "종료 시간": "13:30"},
+    "5교시": {"시작 시간": "13:30", "종료 시간": "14:20"},
+    "청소 시간": {"시작 시간": "14:20", "종료 시간": "14:40"},
+    "6교시": {"시작 시간": "14:40", "종료 시간": "15:30"},
+    "7교시": {"시작 시간": "15:40", "종료 시간": "16:30"}
+}
+
+def get_time_schedule(**kwargs):
+    교시 = kwargs['교시']
+    # 입력된 교시에 해당하는 시간 반환
+    if 교시 in time_schedule:
+        return str(time_schedule[교시]["시작 시간"]) + ' ~ ' + str(time_schedule[교시]["종료 시간"])
+    else:
+        return "해당 교시가 존재하지 않습니다."
+
+# 함수 사용 예시
+
 def get_teachers_number(**kwargs):
     try:
         name = kwargs['name']
@@ -69,7 +91,7 @@ with st.sidebar:
   st.caption("349는 누구번호야?")
   st.caption("경조사 출결기준 알려줘")
 
-st.header('설악GPT')
+st.header('설악GPT _ beta')
 st.caption("🚀 설악고등학교 선생님들을 돕기 위해 만들어졌어요. 아직은 모르는 것이 많습니다.")
 st.caption("설악고등학교 급식메뉴, 학교내선번호, 출결, 성적 기준등에 대해 공부했습니다")
 
@@ -78,14 +100,14 @@ if "text_boxes" not in st.session_state:
 
 for msg in thread_messages.data:
     if msg.role == 'assistant':
-        with st.chat_message(msg.role, avatar=".\seoli.png"):
+        with st.chat_message(msg.role, avatar="seoli.png"):
             st.markdown(msg.content[0].text.value)
     else:
         with st.chat_message(msg.role):
             st.markdown(msg.content[0].text.value)
 
 
-prompt = st.chat_input("물어보고 싶은 것을 입력하세요!")
+prompt = st.chat_input("물어보고 싶은 것을 입력하세요! eg)배고프다. 오늘 메뉴뭐야?")
 
 if prompt:
   st.chat_message("user").write(prompt)
@@ -107,7 +129,7 @@ if prompt:
         messages = client.beta.threads.messages.list(
             thread_id=thread_id
         )
-        st.chat_message("assistant",avatar=".\seoli.png").write(messages.data[0].content[0].text.value)
+        st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
     else:
         print(run.status)
 
@@ -128,6 +150,13 @@ if prompt:
           tool_outputs.append({
             "tool_call_id": tool.id,
             "output": get_teachers_number(**arguments)
+          })
+
+        elif tool.function.name == "get_time_schedule":
+          arguments = json.loads(tool.function.arguments)
+          tool_outputs.append({
+            "tool_call_id": tool.id,
+            "output": get_time_schedule(**arguments)
           })
 
         elif tool.function.name == "get_teachers_name":
@@ -155,6 +184,6 @@ if prompt:
         messages = client.beta.threads.messages.list(
           thread_id=thread_id
         )
-        st.chat_message("assistant",avatar=".\seoli.png").write(messages.data[0].content[0].text.value)
+        st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
       else:
         print(run.status)
