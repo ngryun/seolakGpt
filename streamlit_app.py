@@ -107,7 +107,7 @@ for msg in thread_messages.data:
             st.markdown(msg.content[0].text.value)
 
 
-prompt = st.chat_input("물어보고 싶은 것을 입력하세요! eg)배고프다. 오늘 메뉴뭐야?")
+prompt = st.chat_input("묻고싶은 것은 입력하세요!")
 
 if prompt:
   st.chat_message("user").write(prompt)
