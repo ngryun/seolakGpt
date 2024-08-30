@@ -90,10 +90,16 @@ with st.sidebar:
   st.caption("남궁연 선생님 내선번호 뭐니?")
   st.caption("349는 누구번호야?")
   st.caption("경조사 출결기준 알려줘")
+  st.caption("2학년 1회고사는 언제부터야?")
+  st.caption("10월 주요일정 알려줘")
+  st.caption("교장선생님 성함은?")
 
 st.header('설악GPT _ beta')
 st.caption("🚀 설악고등학교 선생님들을 돕기 위해 만들어졌어요. 아직은 모르는 것이 많습니다.")
-st.caption("설악고등학교 급식메뉴, 학교내선번호, 출결, 성적 기준등에 대해 공부했습니다")
+
+msg = "나는 설이야! 설악고 선생님들의 친한 친구로, 여러 가지 일을 도와주고 있지. 참고로 음식을 무지 좋아하는 미식가야. 궁금한 거 있으면 언제든지 물어봐! 😊✨"
+with st.chat_message("assistant", avatar="seoli.png"):
+    st.markdown(msg)
 
 if "text_boxes" not in st.session_state:
     st.session_state.text_boxes = []
@@ -107,7 +113,7 @@ for msg in thread_messages.data:
             st.markdown(msg.content[0].text.value)
 
 
-prompt = st.chat_input("묻고싶은 것은 입력하세요!")
+prompt = st.chat_input("물어보고 싶은 것을 입력하세요! eg)배고프다. 오늘 메뉴뭐야?")
 
 if prompt:
   st.chat_message("user").write(prompt)
@@ -121,19 +127,21 @@ if prompt:
     run = client.beta.threads.runs.create_and_poll(
         thread_id=thread_id,
         assistant_id=assistant_id,
-        instructions= my_assistant.instructions + "\n 현재 시각은" + current_time 
+        instructions= my_assistant.instructions + "\n\n 오늘 날짜와 시간은" + current_time  + "이야"
     )
 
-    print(run.instructions)
+    # print(run.instructions)
     if run.status == 'completed': 
         messages = client.beta.threads.messages.list(
             thread_id=thread_id
         )
         st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
     else:
-        print(run.status)
+        print(run.status + '1단계')
 
+    print(run.status + '2단계')
     tool_outputs = []
+    
     if run.status =='requires_action':
       for tool in run.required_action.submit_tool_outputs.tool_calls:
         print(tool.function.name)
@@ -166,6 +174,8 @@ if prompt:
             "output": get_teachers_name(**arguments)
           })
 
+      print(run.status + '3단계')
+
       if tool_outputs:
         print(tool_outputs)
         try:
@@ -179,11 +189,11 @@ if prompt:
           print("Failed to submit tool outputs:", e)
       else:
         print("No tool outputs to submit.")
-      
+      print(run.status + '4단계')
       if run.status == 'completed':
         messages = client.beta.threads.messages.list(
           thread_id=thread_id
         )
         st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
       else:
-        print(run.status)
+        print(run.status + "헐")
