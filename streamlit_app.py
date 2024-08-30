@@ -89,8 +89,6 @@ with st.sidebar:
   st.caption("오늘 급식 뭐야?")
   st.caption("남궁연 선생님 내선번호 뭐니?")
   st.caption("349는 누구번호야?")
-  st.caption("경조사 출결기준 알려줘")
-  st.caption("2학년 1회고사는 언제부터야?")
 
 st.header('설악고 챗봇')
 st.caption("🚀 설악고등학교 선생님들을 돕기 위해 만들어졌어요. 아직은 모르는 것이 많습니다.")
