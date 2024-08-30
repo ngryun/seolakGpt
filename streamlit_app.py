@@ -92,7 +92,7 @@ with st.sidebar:
   st.caption("경조사 출결기준 알려줘")
   st.caption("2학년 1회고사는 언제부터야?")
 
-st.header('설악GPT _ beta')
+st.header('설악고 챗봇')
 st.caption("🚀 설악고등학교 선생님들을 돕기 위해 만들어졌어요. 아직은 모르는 것이 많습니다.")
 
 msg = "나는 설이야! 설악고 선생님들의 친한 친구로, 여러 가지 일을 도와주고 있지. 참고로 음식을 무지 좋아하는 미식가야. 궁금한 거 있으면 언제든지 물어봐! 😊✨"
@@ -139,7 +139,7 @@ if prompt:
 
     print(run.status + '2단계')
     tool_outputs = []
-    
+
     if run.status =='requires_action':
       for tool in run.required_action.submit_tool_outputs.tool_calls:
         print(tool.function.name)
@@ -195,3 +195,8 @@ if prompt:
         st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
       else:
         print(run.status + "헐")
+        st.chat_message("assistant",avatar="seoli.png").write("미안 그 질문에 머리가 잘안돌아가. 방금 질문을 남궁연샘께 알려줄 수 있니? 그럼 내가 공부하는데 도움이 될꺼야")
+        run = client.beta.threads.runs.cancel(
+          thread_id=thread_id,
+          run_id=run.id
+        )
