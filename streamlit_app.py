@@ -30,9 +30,6 @@ def get_time_schedule(**kwargs):
         return str(time_schedule[교시]["시작 시간"]) + ' ~ ' + str(time_schedule[교시]["종료 시간"])
     else:
         return "해당 교시가 존재하지 않습니다."
-
-# 함수 사용 예시
-
 def get_teachers_number(**kwargs):
     try:
         name = kwargs['name']
@@ -40,8 +37,6 @@ def get_teachers_number(**kwargs):
         return short_numbers[index]
     except (KeyError, ValueError, IndexError):
         return "교사 이름을 찾을 수 없음"
-
-# 단축번호로 교사 이름을 찾는 함수
 def get_teachers_name(**kwargs):
     try:
         number = kwargs['number']
@@ -49,10 +44,10 @@ def get_teachers_name(**kwargs):
         return names[index]
     except (KeyError, ValueError, IndexError):
         return "해당 단축번호에 해당하는 교사를 찾을 수 없습니다."
-    
 def get_meal(**kwargs):
     try:
         date = kwargs['YYYYMMDD']
+        print(date)
         url = f"https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&ATPT_OFCDC_SC_CODE=K10&SD_SCHUL_CODE=7801148&MMEAL_SC_CODE=2&MLSV_YMD={date}"
         # API를 호출하여 데이터 가져오기
         response = requests.get(url)
@@ -64,41 +59,34 @@ def get_meal(**kwargs):
         return menu
     except (KeyError, IndexError):
         return "급식정보가 없습니다"
-
 load_dotenv()
-# API_KEY = os.environ['OPENAI_API_KEY']
+
 API_KEY = st.secrets["OpenAI_key"]
-
-
-
 client = OpenAI(api_key=API_KEY)
+st.header('설악고등학교 챗봇')
+st.caption("🚀지능 개선에 도움을 준 선생님 : 이애림, 박현주")
 
 #thread id 를 하나로 관리하기 위함
 if 'key' not in st.session_state:
+    # if st.button("오늘 급식메뉴는?"):
+    #     prompt_b = "오늘 메뉴는?"
+    #     button_cliked = True
+    msg = "나는 설이야! 설악고 선생님들의 친한 친구로, 여러 가지 일을 도와주고 있지. 궁금한 거 있으면 언제든지 물어봐! 😊✨"
+    with st.chat_message("assistant", avatar="seoli.png"):
+        st.markdown(msg)
     thread = client.beta.threads.create()
     st.session_state.key = thread.id
 
-print(st.session_state.key)
 thread_id = st.session_state.key
 assistant_id = st.secrets["ASSISTANT_ID"]
 
 my_assistant = client.beta.assistants.retrieve(assistant_id)
 thread_messages = client.beta.threads.messages.list(thread_id,order="asc")
-with st.sidebar:
-  st.caption("예시 질문")
-  st.caption("오늘 급식 뭐야?")
-  st.caption("남궁연 선생님 내선번호 뭐니?")
-  st.caption("349는 누구번호야?")
 
-st.header('설악고 챗봇')
-st.caption("🚀 설악고등학교 선생님들을 돕기 위해 만들어졌어요. 아직은 모르는 것이 많습니다.")
-
-msg = "나는 설이야! 설악고 선생님들의 친한 친구로, 여러 가지 일을 도와주고 있지. 참고로 음식을 무지 좋아하는 미식가야. 궁금한 거 있으면 언제든지 물어봐! 😊✨"
-with st.chat_message("assistant", avatar="seoli.png"):
-    st.markdown(msg)
-
-if "text_boxes" not in st.session_state:
-    st.session_state.text_boxes = []
+#   st.caption("오늘 급식 뭐야?")
+#   st.caption("남궁연 선생님 내선번호 뭐니?")
+#   st.caption("349는 누구번호야?")
+#   st.caption("경조사 출결기준 알려줘")
 
 for msg in thread_messages.data:
     if msg.role == 'assistant':
@@ -108,93 +96,171 @@ for msg in thread_messages.data:
         with st.chat_message(msg.role):
             st.markdown(msg.content[0].text.value)
 
-
-prompt = st.chat_input("물어보고 싶은 것을 입력하세요! eg)배고프다. 오늘 메뉴뭐야?")
-
-if prompt:
-  st.chat_message("user").write(prompt)
-  with st.spinner("..생각중.."):
-    message = client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=prompt
-    )
-    current_time = datetime.now(kst).strftime('%Y-%m-%d %H:%M:%S')
-    run = client.beta.threads.runs.create_and_poll(
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        instructions= my_assistant.instructions + "\n\n 오늘 날짜와 시간은" + current_time  + "이야"
-    )
-
-    # print(run.instructions)
-    if run.status == 'completed': 
-        messages = client.beta.threads.messages.list(
-            thread_id=thread_id
-        )
-        st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
-    else:
-        print(run.status + '1단계')
-
-    print(run.status + '2단계')
+def handle_tool_outputs(run, client, thread_id):
     tool_outputs = []
+    if run.status == 'requires_action':
+        for tool in run.required_action.submit_tool_outputs.tool_calls:
+            function_name = tool.function.name
+            arguments = json.loads(tool.function.arguments)
+            output = None
+            print(function_name)
 
-    if run.status =='requires_action':
-      for tool in run.required_action.submit_tool_outputs.tool_calls:
-        print(tool.function.name)
-        if tool.function.name == "get_meal":
-          arguments = json.loads(tool.function.arguments)
-          print(arguments)
-          tool_outputs.append({
-            "tool_call_id": tool.id,
-            "output": get_meal(**arguments)
-          })
+            if function_name == "get_meal":
+                output = get_meal(**arguments)
+            elif function_name == "get_teachers_number":
+                output = get_teachers_number(**arguments)
+            elif function_name == "get_time_schedule":
+                output = get_time_schedule(**arguments)
+            elif function_name == "get_teachers_name":
+                output = get_teachers_name(**arguments)
 
-        elif tool.function.name == "get_teachers_number":
-          arguments = json.loads(tool.function.arguments)
-          tool_outputs.append({
-            "tool_call_id": tool.id,
-            "output": get_teachers_number(**arguments)
-          })
+            if output:
+                print(output)
+                tool_outputs.append({
+                    "tool_call_id": tool.id,
+                    "output": output
+                })
 
-        elif tool.function.name == "get_time_schedule":
-          arguments = json.loads(tool.function.arguments)
-          tool_outputs.append({
-            "tool_call_id": tool.id,
-            "output": get_time_schedule(**arguments)
-          })
+        if tool_outputs:
+            try:
+                #원래는 sumit_tool_outputs_and_poll 인가 그랬음.
+                stream = client.beta.threads.runs.submit_tool_outputs(
+                    thread_id=thread_id,
+                    run_id=run.id,
+                    tool_outputs=tool_outputs,
+                    stream = True
+                )
+                print("Tool outputs submitted successfully.")
+                res_box = st.empty()
+                report=[]
 
-        elif tool.function.name == "get_teachers_name":
-          arguments = json.loads(tool.function.arguments)
-          tool_outputs.append({
-            "tool_call_id": tool.id,
-            "output": get_teachers_name(**arguments)
-          })
+                for event in stream:
+                    print(event.data.object)
+                    if event.data.object == 'thread.message.delta':
+                        for content in event.data.delta.content:
+                            if content.type == 'text':
+                                report.append(content.text.value)
+                                result = "".join(report).strip()
+                                res_box.markdown(f'*{result}*')
+                                event = True
+            except Exception as e:
+                print("Failed to submit tool outputs:", e)
+        else:
+            print("No tool outputs to submit.")
+            event = False
 
-      print(run.status + '3단계')
+    return event
+def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_retries=3):
+    st.chat_message("user").write(prompt)
+    
+    retries = 0
+    success = False
+    with st.chat_message("assistant", avatar="seoli.png"):
+        res_box = st.empty()
+        report=[]
 
-      if tool_outputs:
-        print(tool_outputs)
-        try:
-          run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+        while retries < max_retries and not success:
+            message = client.beta.threads.messages.create(
+                thread_id=thread_id,
+                role="user",
+                content=prompt
+            )
+            current_time = datetime.now(kst).strftime('%Y-%m-%d %H:%M:%S')
+            stream = client.beta.threads.runs.create(
+                thread_id=thread_id,
+                assistant_id=assistant_id,
+                instructions=my_assistant.instructions + "\n 현재 시각은 " + current_time,
+                stream = True
+            )
+
+            for event in stream:
+                print(event.data.object)
+                if event.data.object == 'thread.message.delta':
+                    for content in event.data.delta.content:
+                        if content.type == 'text':
+                            report.append(content.text.value)
+                            result = "".join(report).strip()
+                            res_box.markdown(f'*{result}*')
+                            success = True
+            print("야호" + event.data.id)
+            run = client.beta.threads.runs.retrieve(
             thread_id=thread_id,
-            run_id=run.id,
-            tool_outputs=tool_outputs
-          )
-          print("Tool outputs submitted successfully.")
-        except Exception as e:
-          print("Failed to submit tool outputs:", e)
-      else:
-        print("No tool outputs to submit.")
-      print(run.status + '4단계')
-      if run.status == 'completed':
-        messages = client.beta.threads.messages.list(
-          thread_id=thread_id
-        )
-        st.chat_message("assistant",avatar="seoli.png").write(messages.data[0].content[0].text.value)
-      else:
-        print(run.status + "헐")
-        st.chat_message("assistant",avatar="seoli.png").write("미안 그 질문에 머리가 잘안돌아가. 방금 질문을 남궁연샘께 알려줄 수 있니? 그럼 내가 공부하는데 도움이 될꺼야")
-        run = client.beta.threads.runs.cancel(
-          thread_id=thread_id,
-          run_id=run.id
-        )
+            run_id=event.data.id
+            )
+            print(run.status)
+        
+            if run.status == 'requires_action':
+
+                event = handle_tool_outputs(run, client, thread_id)
+
+
+                # run = client.beta.threads.runs.retrieve(
+                # thread_id=thread_id,
+                # run_id=event.data.id
+                # )
+
+                # if run.status == 'completed':
+                if event:
+                    success = True
+                else:
+                    retries += 1
+                    print(f"Retrying... ({retries}/{max_retries})")
+                    if retries >= max_retries:
+                        res_box.markdown("미안.. 오류발생")
+                        run = client.beta.threads.runs.cancel(
+                        thread_id=thread_id,
+                        run_id=run.id
+                        )
+                        deleted_message = client.beta.threads.messages.delete(
+                            message_id = message.id,
+                            thread_id=thread_id,
+                        )
+                    else:
+                        print(run.status + "\n")
+                        print(run)
+                        run = client.beta.threads.runs.cancel(
+                        thread_id=thread_id,
+                        run_id=run.id
+                        )
+                        deleted_message = client.beta.threads.messages.delete(
+                            message_id = message.id,
+                            thread_id=thread_id,
+                        )
+
+
+button_cliked = False
+
+with st.sidebar:
+   st.markdown("질문예시")
+   if st.button("남궁연 내선번호는?"):
+       prompt_b = "남궁연 내선번호는?"
+       button_cliked = True
+   if st.button("1학년 2회고사는 언제부터야?"):
+       prompt_b = "1학년 2회고사는 언제부터야?"
+       button_cliked = True
+   if st.button("오늘 급식메뉴는?"):
+       prompt_b = "오늘 급식메뉴는?"
+       button_cliked = True
+   if st.button("1교시는 언제 시작해?"):
+       prompt_b = "1교시는 언제 시작해?"
+       button_cliked = True       
+   if st.button("경조사 출결기준 알려줄래?"):
+       prompt_b = "경조사 출결기준 알려줄래?"
+       button_cliked = True
+   if st.button("2학년 인문계 1등급은 몇명까지야?"):
+       prompt_b = "2학년 인문계 1등급은 몇명까지야?"
+       button_cliked = True    
+   if st.button("10월 주요일정알려줘"):
+       prompt_b = "10월 주요일정알려줘"
+       button_cliked = True    
+   if st.button("교장선생님 성함으로 삼행시지어줘"):
+       prompt_b = "교장선생님 성함 알려주고 삼행시지어줄래?"
+       button_cliked = True    
+
+if button_cliked:
+  process_prompt(prompt_b, client, thread_id, assistant_id, my_assistant)
+
+prompt = st.chat_input("물어보고 싶은 것을 입력하세요!")
+if prompt:
+    process_prompt(prompt, client, thread_id, assistant_id, my_assistant)
+
