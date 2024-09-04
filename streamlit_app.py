@@ -11,25 +11,6 @@ kst = pytz.timezone('Asia/Seoul')
 names = st.secrets["names"]
 short_numbers = st.secrets["short_numbers"]
 
-time_schedule = {
-    "1교시": {"시작 시간": "8:40", "종료 시간": "9:30"},
-    "2교시": {"시작 시간": "9:40", "종료 시간": "10:30"},
-    "3교시": {"시작 시간": "10:40", "종료 시간": "11:30"},
-    "4교시": {"시작 시간": "11:40", "종료 시간": "12:30"},
-    "점심 식사 시간": {"시작 시간": "12:30", "종료 시간": "13:30"},
-    "5교시": {"시작 시간": "13:30", "종료 시간": "14:20"},
-    "청소 시간": {"시작 시간": "14:20", "종료 시간": "14:40"},
-    "6교시": {"시작 시간": "14:40", "종료 시간": "15:30"},
-    "7교시": {"시작 시간": "15:40", "종료 시간": "16:30"}
-}
-
-def get_time_schedule(**kwargs):
-    교시 = kwargs['교시']
-    # 입력된 교시에 해당하는 시간 반환
-    if 교시 in time_schedule:
-        return str(time_schedule[교시]["시작 시간"]) + ' ~ ' + str(time_schedule[교시]["종료 시간"])
-    else:
-        return "해당 교시가 존재하지 않습니다."
 def get_teachers_number(**kwargs):
     try:
         name = kwargs['name']
@@ -109,8 +90,6 @@ def handle_tool_outputs(run, client, thread_id):
                 output = get_meal(**arguments)
             elif function_name == "get_teachers_number":
                 output = get_teachers_number(**arguments)
-            elif function_name == "get_time_schedule":
-                output = get_time_schedule(**arguments)
             elif function_name == "get_teachers_name":
                 output = get_teachers_name(**arguments)
 
@@ -192,14 +171,6 @@ def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_re
             if run.status == 'requires_action':
 
                 event = handle_tool_outputs(run, client, thread_id)
-
-
-                # run = client.beta.threads.runs.retrieve(
-                # thread_id=thread_id,
-                # run_id=event.data.id
-                # )
-
-                # if run.status == 'completed':
                 if event:
                     success = True
                 else:
@@ -215,6 +186,8 @@ def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_re
                             message_id = message.id,
                             thread_id=thread_id,
                         )
+                        thread = client.beta.threads.create()
+                        thread_id = thread.id
                     else:
                         print(run.status + "\n")
                         print(run)
