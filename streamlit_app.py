@@ -46,7 +46,7 @@ API_KEY = st.secrets["OpenAI_key"]
 client = OpenAI(api_key=API_KEY)
 st.header('설악고등학교 챗봇')
 st.caption("🚀지능 개선에 도움을 준 선생님 : 이애림, 박현주")
-
+thread_id=''
 #thread id 를 하나로 관리하기 위함
 if 'key' not in st.session_state:
     # if st.button("오늘 급식메뉴는?"):
@@ -57,25 +57,12 @@ if 'key' not in st.session_state:
         st.markdown(msg)
     thread = client.beta.threads.create()
     st.session_state.key = thread.id
-
+    
 thread_id = st.session_state.key
 assistant_id = st.secrets["ASSISTANT_ID"]
-
+print(thread_id)
 my_assistant = client.beta.assistants.retrieve(assistant_id)
 thread_messages = client.beta.threads.messages.list(thread_id,order="asc")
-
-#   st.caption("오늘 급식 뭐야?")
-#   st.caption("남궁연 선생님 내선번호 뭐니?")
-#   st.caption("349는 누구번호야?")
-#   st.caption("경조사 출결기준 알려줘")
-
-for msg in thread_messages.data:
-    if msg.role == 'assistant':
-        with st.chat_message(msg.role, avatar="seoli.png"):
-            st.markdown(msg.content[0].text.value)
-    else:
-        with st.chat_message(msg.role):
-            st.markdown(msg.content[0].text.value)
 
 def handle_tool_outputs(run, client, thread_id):
     tool_outputs = []
@@ -114,7 +101,7 @@ def handle_tool_outputs(run, client, thread_id):
                 report=[]
 
                 for event in stream:
-                    print(event.data.object)
+                    # print(event.data.object)
                     if event.data.object == 'thread.message.delta':
                         for content in event.data.delta.content:
                             if content.type == 'text':
@@ -130,14 +117,15 @@ def handle_tool_outputs(run, client, thread_id):
 
     return event
 def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_retries=3):
+    print('함수시작')
     st.chat_message("user").write(prompt)
-    
+    print(thread_id)
     retries = 0
     success = False
     with st.chat_message("assistant", avatar="seoli.png"):
         res_box = st.empty()
         report=[]
-
+        
         while retries < max_retries and not success:
             message = client.beta.threads.messages.create(
                 thread_id=thread_id,
@@ -151,22 +139,22 @@ def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_re
                 instructions=my_assistant.instructions + "\n 현재 시각은 " + current_time,
                 stream = True
             )
-
-            for event in stream:
-                print(event.data.object)
-                if event.data.object == 'thread.message.delta':
-                    for content in event.data.delta.content:
-                        if content.type == 'text':
-                            report.append(content.text.value)
-                            result = "".join(report).strip()
-                            res_box.markdown(f'*{result}*')
-                            success = True
-            print("야호" + event.data.id)
-            run = client.beta.threads.runs.retrieve(
-            thread_id=thread_id,
-            run_id=event.data.id
-            )
-            print(run.status)
+            with st.spinner():
+                for event in stream:
+                    print(event.data.object)
+                    if event.data.object == 'thread.message.delta':
+                        for content in event.data.delta.content:
+                            if content.type == 'text':
+                                report.append(content.text.value)
+                                result = "".join(report).strip()
+                                res_box.markdown(f'*{result}*')
+                                success = True
+                print("야호" + event.data.id)
+                run = client.beta.threads.runs.retrieve(
+                thread_id=thread_id,
+                run_id=event.data.id
+                )
+                print(run.status)
         
             if run.status == 'requires_action':
 
@@ -182,12 +170,13 @@ def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_re
                         thread_id=thread_id,
                         run_id=run.id
                         )
-                        deleted_message = client.beta.threads.messages.delete(
-                            message_id = message.id,
-                            thread_id=thread_id,
-                        )
+                        # deleted_message = client.beta.threads.messages.delete(
+                        #     message_id = message.id,
+                        #     thread_id=thread_id,
+                        # )
                         thread = client.beta.threads.create()
                         thread_id = thread.id
+                        st.session_state.key = thread.id
                     else:
                         print(run.status + "\n")
                         print(run)
@@ -199,41 +188,54 @@ def process_prompt(prompt, client, thread_id, assistant_id, my_assistant, max_re
                             message_id = message.id,
                             thread_id=thread_id,
                         )
-
+    print('함수끝')
 
 button_cliked = False
-
+print("메시지출력전")
+for msg in thread_messages.data:
+    if msg.role == 'assistant':
+        with st.chat_message(msg.role, avatar="seoli.png"):
+            st.markdown(msg.content[0].text.value)
+    else:
+        with st.chat_message(msg.role):
+            st.markdown(msg.content[0].text.value)
+print('메시지출력후')
 with st.sidebar:
    st.markdown("질문예시")
-   if st.button("남궁연 내선번호는?"):
-       prompt_b = "남궁연 내선번호는?"
-       button_cliked = True
-   if st.button("1학년 2회고사는 언제부터야?"):
-       prompt_b = "1학년 2회고사는 언제부터야?"
+   if st.button("설악고에 대해 소개해줘"):
+       prompt_b = "설악고에 대해 소개해줘"
        button_cliked = True
    if st.button("오늘 급식메뉴는?"):
        prompt_b = "오늘 급식메뉴는?"
        button_cliked = True
-   if st.button("1교시는 언제 시작해?"):
-       prompt_b = "1교시는 언제 시작해?"
+   if st.button("지금은 몇교시야?"):
+       prompt_b = "지금은 몇교시야?"
        button_cliked = True       
-   if st.button("경조사 출결기준 알려줄래?"):
-       prompt_b = "경조사 출결기준 알려줄래?"
+   if st.button("경조사 출결기준 알려줘?"):
+       prompt_b = "경조사 출결기준 알려줘?"
        button_cliked = True
-   if st.button("2학년 인문계 1등급은 몇명까지야?"):
-       prompt_b = "2학년 인문계 1등급은 몇명까지야?"
+   if st.button("3학년 4등급은 몇명까지야?"):
+       prompt_b = "3학년 4등급은 몇명까지야? 정확히 계산해줘!"
        button_cliked = True    
-   if st.button("10월 주요일정알려줘"):
+   if st.button("10월 주요일정은?"):
        prompt_b = "10월 주요일정알려줘"
-       button_cliked = True    
-   if st.button("교장선생님 성함으로 삼행시지어줘"):
+       button_cliked = True
+   if st.button("남궁연 내선번호는?"):
+       prompt_b = "남궁연 내선번호는?"
+       button_cliked = True 
+   if st.button("교장선생님 성함으로 삼행시!"):
        prompt_b = "교장선생님 성함 알려주고 삼행시지어줄래?"
-       button_cliked = True    
+       button_cliked = True
+   if st.button("교감선생님 성함으로 이행시!"):
+       prompt_b = "교감선생님 성함 알려주고 이행시지어줄래?"
+       button_cliked = True       
 
 if button_cliked:
-  process_prompt(prompt_b, client, thread_id, assistant_id, my_assistant)
+    process_prompt(prompt_b, client, thread_id, assistant_id, my_assistant)
 
+print("prompt 입력전")
 prompt = st.chat_input("물어보고 싶은 것을 입력하세요!")
 if prompt:
+    print("prompt 입력후")
     process_prompt(prompt, client, thread_id, assistant_id, my_assistant)
 
