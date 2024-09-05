@@ -45,7 +45,7 @@ load_dotenv()
 API_KEY = st.secrets["OpenAI_key"]
 client = OpenAI(api_key=API_KEY)
 st.header('설악고등학교 챗봇')
-st.caption("🚀지능 개선에 도움을 준 선생님 : 이애림, 박현주")
+st.caption("🚀지능 개선에 도움을 준 분 : 이애림선생님,박현주선생님, 변미영교장선생님")
 thread_id=''
 #thread id 를 하나로 관리하기 위함
 if 'key' not in st.session_state:
